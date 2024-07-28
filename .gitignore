@@ -164,7 +164,7 @@ cython_debug/
 
 # nanoGPT gitignore
 *.bin
-*.pk
+*.pt
 *.pyc
 *.pkl
 *.DS_STORE
