@@ -3,15 +3,19 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 class DataAugmenter:
   def __init__(self, k=50, perplexity_threshold=100, device='cuda'):
+    print('Initializing DataAugmenter!')
+
     # Load model and put it on device
     model_name = 'gpt2'
     self.device = device
     self.model = GPT2LMHeadModel.from_pretrained(model_name).to(self.device)
+    print('Loaded GPT-2 model!')
 
     # Load tokenizer and save relevant information
     self.tokenizer = GPT2Tokenizer.from_pretrained(model_name)
     self.tokenizer.pad_token = self.tokenizer.eos_token
     self.vocabulary_size = len(self.tokenizer)
+    print('Loaded GPT-2 tokenizer!')
 
     # Save hyperparameters
     self.k = k
@@ -56,7 +60,7 @@ class DataAugmenter:
     return valid_mask
 
   def _create_boolean_vector_batch(self, substitutes_batch, valid_mask):
-    boolean_vector_batch = torch.zeros((substitutes_batch.size(0), self.vocabulary_size), dtype=torch.int)
+    boolean_vector_batch = torch.zeros((substitutes_batch.size(0), self.vocabulary_size), dtype=torch.float16)
 
     valid_indices = substitutes_batch[valid_mask]
     batch_indices = torch.arange(substitutes_batch.size(0)).to(self.device).repeat_interleave(valid_mask.sum(dim=-1))
@@ -78,7 +82,11 @@ class DataAugmenter:
 
     boolean_vector = self._create_boolean_vector_batch(substitutes, valid_mask)
 
-    return boolean_vector, target_indices
+    del substitutes
+    del valid_mask
+    torch.cuda.empty_cache()
+
+    return boolean_vector[:, None, :], target_indices
 
   def generate_new_sentences(self, input_ids_batch, target_indices, boolean_vector_batch):
     vocabulary = list(self.tokenizer.get_vocab().keys())
