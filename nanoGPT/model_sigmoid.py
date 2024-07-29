@@ -313,7 +313,6 @@ class GPT(nn.Module):
         mfu = flops_achieved / flops_promised
         return mfu
 
-    
     @torch.no_grad()
     def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
         """
@@ -332,8 +331,7 @@ class GPT(nn.Module):
             if top_k is not None:
                 v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
                 logits[logits < v[:, [-1]]] = -float('Inf')
-            # apply softmax to convert logits to (normalized) probabilities
-            #probs = F.softmax(logits, dim=-1)
+            # apply sigmoid to convert logits to (normalized) probabilities
             probs = torch.sigmoid(logits)
             probs = probs / torch.sum(probs)
 

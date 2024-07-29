@@ -167,7 +167,6 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    
     def forward(self, idx, targets=None):
         device = idx.device
         b, t = idx.size()
@@ -182,7 +181,6 @@ class GPT(nn.Module):
             x = block(x)
         x = self.transformer.ln_f(x)
 
-        
         if targets is not None:
             # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
@@ -304,7 +302,6 @@ class GPT(nn.Module):
         mfu = flops_achieved / flops_promised
         return mfu
 
-    
     @torch.no_grad()
     def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
         """
