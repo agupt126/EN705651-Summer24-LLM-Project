@@ -7,17 +7,24 @@ Summary:
 
 ## Project MVP Update: 07/30/2024
 
+### 1.0 General Updates
 
-### Training Data Augmentation
+### 2.0 Training Data
 
-
-### GPT-2 Training/Testing
-
-
-#### Baseline
+#### 2.1 Dataset
 
 
-#### Sigmoid
+#### 2.2 Augmentation
+
+### 3.0 GPT-2 Training/Testing
 
 
-#### Bayesian
+#### 3.1 Baseline
+
+
+#### 3.2 Sigmoid
+
+
+#### 3.3 Bayesian
+
+### 4.0 Next Steps
