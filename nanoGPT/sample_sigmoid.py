@@ -6,12 +6,12 @@ import pickle
 from contextlib import nullcontext
 import torch
 import tiktoken
-from model import GPTConfig, GPT
+from model_sigmoid import GPTConfig, GPT
 
 # -----------------------------------------------------------------------------
 init_from = 'resume' # either 'resume' (from an out_dir) or a gpt2 variant (e.g. 'gpt2-xl')
 out_dir = 'out' # ignored if init_from is not 'resume'
-start = "\n" # or "<|endoftext|>" or etc. Can also specify a file, use as: "FILE:prompt.txt"
+start = "\n" # or "" or etc. Can also specify a file, use as: "FILE:prompt.txt"
 num_samples = 10 # number of samples to draw
 max_new_tokens = 500 # number of tokens generated in each sample
 temperature = 0.8 # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
@@ -31,6 +31,24 @@ device_type = 'cuda' if 'cuda' in device else 'cpu' # for later use in torch.aut
 ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torch.float16}[dtype]
 ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
 
+# Define the rename_state_dict_keys function
+def rename_state_dict_keys(state_dict):
+    new_state_dict = {}
+    for key in state_dict.keys():
+        if key == "lm_head.weight":
+            new_key = "lm_head.weight_param"
+        elif key == "lm_head.bias":
+            new_key = "lm_head.bias_param"
+        # Correctly handle keys without adding extra _param suffix
+        elif key == "lm_head.weight_param_param":
+            new_key = "lm_head.weight_param"
+        elif key == "lm_head.bias_param_param":
+            new_key = "lm_head.bias_param"
+        else:
+            new_key = key
+        new_state_dict[new_key] = state_dict[key]
+    return new_state_dict
+
 # model
 if init_from == 'resume':
     # init from a model saved in a specific directory
@@ -43,6 +61,10 @@ if init_from == 'resume':
     for k,v in list(state_dict.items()):
         if k.startswith(unwanted_prefix):
             state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
+    
+    # Rename the keys in the state dictionary
+    state_dict = rename_state_dict_keys(state_dict)
+    
     model.load_state_dict(state_dict)
 elif init_from.startswith('gpt2'):
     # init from a given GPT-2 model
@@ -70,7 +92,7 @@ else:
     # ok let's assume gpt-2 encodings by default
     print("No meta.pkl found, assuming GPT-2 encodings...")
     enc = tiktoken.get_encoding("gpt2")
-    encode = lambda s: enc.encode(s, allowed_special={"<|endoftext|>"})
+    encode = lambda s: enc.encode(s, allowed_special={""})
     decode = lambda l: enc.decode(l)
 
 # encode the beginning of the prompt

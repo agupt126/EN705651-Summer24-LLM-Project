@@ -38,6 +38,7 @@ class BayesianLinear(PyroModule):
         return torch.nn.functional.linear(input, weight, bias)
 
 
+
 class LayerNorm(nn.Module):
     """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
 
@@ -154,12 +155,19 @@ class GPT(nn.Module):
             ln_f = LayerNorm(config.n_embd, bias=config.bias),
         ))
         #self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-        self.lm_head = BayesianLinear(config.n_embd, config.vocab_size)
+        #self.lm_head = BayesianLinear(config.n_embd, config.vocab_size)
         # with weight tying when using torch.compile() some warnings get generated:
         # "UserWarning: functional_call was passed multiple values for tied weights.
         # This behavior is deprecated and will be an error in future versions"
         # not 100% sure what this is, so far seems to be harmless. TODO investigate
-        self.transformer.wte.weight = self.lm_head.weight_param # https://paperswithcode.com/method/weight-tying
+        #self.transformer.wte.weight = self.lm_head.weight_param # https://paperswithcode.com/method/weight-tying
+
+
+        # Use Bayesian linear layer instead of standard linear layer
+        self.lm_head = BayesianLinear(config.n_embd, config.vocab_size)
+        
+        # Ensure the weights are shared correctly
+        self.transformer.wte.weight = self.lm_head.weight_param
 
         # init all weights
         self.apply(self._init_weights)
@@ -207,7 +215,9 @@ class GPT(nn.Module):
         x = self.transformer.ln_f(x)
 
         # For Bayesian linear layer
-        logits = self.lm_head(x)
+        logits = self.lm_head(x) # Ensure logits is 3D: (batch_size, sequence_length, vocab_size)
+        if logits.dim() == 2:
+            logits = logits.unsqueeze(1)
 
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
@@ -216,6 +226,7 @@ class GPT(nn.Module):
             loss = None
 
         return logits, loss
+
     
     """
     #Softmax Forward pass
@@ -408,6 +419,9 @@ class GPT(nn.Module):
             idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
             # forward the model to get the logits for the index in the sequence
             logits, _ = self(idx_cond)
+            # Ensure logits is 3D: (batch_size, sequence_length, vocab_size)
+            if logits.dim() == 2:
+                logits = logits.unsqueeze(1)
             # pluck the logits at the final step and scale by desired temperature
             logits = logits[:, -1, :] / temperature
             # optionally crop the logits to only the top k options
@@ -422,6 +436,10 @@ class GPT(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1)
 
         return idx
+
+
+
+
 
     #@torch.no_grad()
     #def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
