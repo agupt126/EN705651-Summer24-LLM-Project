@@ -37,7 +37,24 @@ In other words, there is a single correct token (in the whole vocabulary) that f
 
 Alternate valid tokens are generated using a pretrained GPT-2 model (small). For each example in a batch, a random index is generated. This is the index of the token to be "augmented" (generate additional tokens for). $k$ candidate tokens are generated using the top-$k$ sampling strategy. By default, we set $k = 50$. The validity of each new token substitute is determined based on a perplexity threshold. By default, this value is set to $100$. Both $k$ and the perplexity threshold are tunable hyperparameters that can be adjusted for each run.
 
-The implementation can be found in the `augmentation` directory. The `DataAugmenter` class within `data_augmentation.py` contains code that loads a pretrained GPT-2 model from Huggingface's `transformers` library. In addition, there is an `augment()` function that is responsible for generating candidate token substitutes, filtering these substitutes (based on perplexity), and generating a boolean output tensor.
+The implementation can be found in the `augmentation` directory. The `DataAugmenter` class within `data_augmentation.py` contains code that loads a pretrained GPT-2 model from Huggingface's `transformers` library. In addition, there is an `augment()` function that is responsible for generating candidate token substitutes, filtering these substitutes (based on perplexity), and generating a boolean output tensor. The following code snippet demonstrates basic functionality:
+
+```
+from data_augmentation import DataAugmenter
+
+augmenter = DataAugmenter()
+sentences = ["The boy went to the park.", "She loves to read books."]
+inputs = augmenter.tokenizer(sentences, return_tensors='pt', padding=True, truncation=True)
+input_ids_batch = inputs['input_ids'].to('cuda')
+output, target_indices = augmenter.augment(input_ids_batch, target_indices=[5,4], do_filter=True)
+```
+
+```
+[['The boy went to the area.',
+  'The boy went to the bench.',
+  'The boy went to the entrance.'],
+ ['She loves to read too.']]
+```
 
 ### 3.0 GPT-2 Training/Testing
 
