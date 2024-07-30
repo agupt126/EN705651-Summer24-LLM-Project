@@ -43,7 +43,7 @@ In other words, there is a single correct token (in the whole vocabulary) that f
 
 `[0, 0, 0, 1, 0, ..., 1, 0, 0]`
 
-Alternate valid tokens are generated using a pretrained GPT-2 model (small). For each example in a batch, a random index is generated. This is the index of the token to be "augmented" (generate additional tokens for). $k$ candidate tokens are generated using the top-$k$ sampling strategy. By default, we set $k = 50$. The validity of each new token substitute is determined based on a perplexity threshold. By default, this value is set to $100$. Both $k$ and the perplexity threshold are tunable hyperparameters that can be adjusted for each run.
+Alternate valid tokens are generated using a pretrained GPT-2 model (small). For each example in a batch, a random index is generated. This is the index of the token to be "augmented" (generate additional tokens for). $k$ candidate tokens are generated using the top-k sampling strategy. By default, we set $k = 50$. The validity of each new token substitute is determined based on a perplexity threshold. By default, this value is set to $100$. Both $k$ and the perplexity threshold are tunable hyperparameters that can be adjusted for each run.
 
 The implementation can be found in the `augmentation` directory. The `DataAugmenter` class within `data_augmentation.py` contains code that loads a pretrained GPT-2 model from Huggingface's `transformers` library. In addition, there is an `augment()` function that is responsible for generating candidate token substitutes, filtering these substitutes (based on perplexity), and generating a boolean output tensor. The following code snippet demonstrates basic functionality:
 
@@ -67,10 +67,10 @@ output, target_indices = augmenter.augment(input_ids_batch, target_indices=[5,4]
 ### 3.0 GPT-2 Training/Testing
 
 #### 3.1 Baseline
-We will use a baseline model as a comparison metric for the proposed variations to the model architecture. The baseline model used is GPT2-2 with approximatley 124M parameters.
+We will use a baseline model as a comparison metric for the proposed variations to the model architecture. The baseline model used is GPT-2 with approximatley 124M parameters.
 
 #### 3.2 Sigmoid
-The proposed architecture will replace the Softmax layer with a Sigmoid layer. This is a common approach when dealing with multilabel classification problems. This highlights an important idea that in language, there is often more than one feasible next token. Additionally, we have replaced the Cross-Entropy Loss function with the Binary Cross-Entropy loss function. This is more suitable when dealing with a Sidmoid layer and allows us to define an individual probability distribution over each token. The updated model can be found in the model_sigmoid.py file. Changes were required in the forward function as well as the generate function.
+The proposed architecture will replace the Softmax layer with a Sigmoid layer. This is a common approach when dealing with multilabel classification problems. This highlights an important idea that in language, there is often more than one feasible next token. Additionally, we have replaced the Cross-Entropy Loss function with the Binary Cross-Entropy loss function. This is more suitable when dealing with a Sigmoid layer and allows us to define an individual probability distribution over each token. The updated model can be found in the model_sigmoid.py file. Changes were required in the forward function as well as the generate function.
 
 #### 3.3 Bayesian
 An alternative architecture that we will explore replaces the last linear layer with a Bayesian layer. As a result, we learn a distribution that we can sample from for the weights leading into the activation function and sample from this distribution multiple times. This architecture will use the SoftMax activation function as well as the Cross-Entropy Loss function. This updated model can be found in the model_BN.py file. Using the Pyro library, a new class for a Bayesian layer is defined. Additionaly, updates were made to the forward function as well as the generate function.
