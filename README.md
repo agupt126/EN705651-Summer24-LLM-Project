@@ -9,11 +9,19 @@ In contemporary state-of-the-art large language models (LLMs), training typicall
 ## Project MVP Update: 07/30/2024
 
 ### 1.0 General Updates
+In order to train the models, we will be using LightningAI as well as the APL Abyss HPC. 
+
+Milestones:
+- Able to run Baseline model using LightningAI
+- Able to locally run Sigmoid model (not including data augmenter)
+- Able to locally run Bayesian model
+- Able to generate substitute candidate tokens and convert to vector encoding
 
 ### 2.0 Training Data
 
 #### 2.1 Dataset
-
+We are using Wikitext which contains approximatley 103M tokens for our training set.
+https://huggingface.co/datasets/Salesforce/wikitext
 
 #### 2.2 Augmentation
 
@@ -58,14 +66,16 @@ output, target_indices = augmenter.augment(input_ids_batch, target_indices=[5,4]
 
 ### 3.0 GPT-2 Training/Testing
 
-
 #### 3.1 Baseline
 We will use a baseline model as a comparison metric for the proposed variations to the model architecture. The baseline model used is GPT2-2 with approximatley 124M parameters.
 
 #### 3.2 Sigmoid
-The proposed architecture will replace the Softmax layer with a Sigmoid layer. This is a common approach when dealing with multilabel classification problems. This highlights an important idea that in language, there is often more than one feasible next token. Additionally, we have replaced the Cross-Entropy Loss function with the Binary Cross-Entropy loss function. This is more suitable when dealing with a Sidmoid layer and allows us to define an individual probability distribution over each token. 
+The proposed architecture will replace the Softmax layer with a Sigmoid layer. This is a common approach when dealing with multilabel classification problems. This highlights an important idea that in language, there is often more than one feasible next token. Additionally, we have replaced the Cross-Entropy Loss function with the Binary Cross-Entropy loss function. This is more suitable when dealing with a Sidmoid layer and allows us to define an individual probability distribution over each token. The updated model can be found in the model_sigmoid.py file. Changes were required in the forward function as well as the generate function.
 
 #### 3.3 Bayesian
-An alternative architecture that we will explore replaces the last linear layer with a Bayesian layer. As a result, we learn a distribution that we can sample from for the weights leading into the activation function and sample from this distribution multiple times. This architecture will use the Softmax activation function as well as the Cross-Entropy Loss function.
+An alternative architecture that we will explore replaces the last linear layer with a Bayesian layer. As a result, we learn a distribution that we can sample from for the weights leading into the activation function and sample from this distribution multiple times. This architecture will use the SoftMax activation function as well as the Cross-Entropy Loss function. This updated model can be found in the model_BN.py file. Using the Pyro library, a new class for a Bayesian layer is defined. Additionaly, updates were made to the forward function as well as the generate function.
 
 ### 4.0 Next Steps
+- Integrate data augmentor into batch generation function to train model
+- Train full size models using LightningAI/APL Abyss HPC
+- Compare alternate frameworks using metrics such as Perplexity
