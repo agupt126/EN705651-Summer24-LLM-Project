@@ -24,10 +24,20 @@ from contextlib import nullcontext
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
 from model_sigmoid import GPTConfig, GPT
+
+
+import sys
+sys.path.append('..')
+from augmentation.data_augmentation import DataAugmenter
+
+# REQUIRED TO RUN ON WINDOWS
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
 
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
@@ -111,6 +121,9 @@ device_type = 'cuda' if 'cuda' in device else 'cpu' # for later use in torch.aut
 ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torch.float16}[dtype]
 ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
 
+# Initialize data augmentation
+augmenter = DataAugmenter(device=device_type)
+
 # poor man's data loader
 data_dir = os.path.join('data', dataset)
 def get_batch(split):
@@ -128,6 +141,8 @@ def get_batch(split):
         x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
     else:
         x, y = x.to(device), y.to(device)
+    y, _ = augmenter.augment(x, do_filter=False)
+    y = y.to(device)
     return x, y
 
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
@@ -152,7 +167,7 @@ if init_from == 'scratch':
     # determine the vocab size we'll use for from-scratch training
     if meta_vocab_size is None:
         print("defaulting to vocab_size of GPT-2 to 50304 (50257 rounded up for efficiency)")
-    model_args['vocab_size'] = meta_vocab_size if meta_vocab_size is not None else 50304
+    model_args['vocab_size'] = meta_vocab_size if meta_vocab_size is not None else 50257
     gptconf = GPTConfig(**model_args)
     model = GPT(gptconf)
 elif init_from == 'resume':
@@ -221,7 +236,10 @@ def estimate_loss():
         for k in range(eval_iters):
             X, Y = get_batch(split)
             with ctx:
-                logits, loss = model(X, Y)
+                # Pull logits from model output
+                logits, _ = model(X)
+                # Apply BCE loss to sigmoid-ed logits and binary vector of valid next tokens
+                loss = F.binary_cross_entropy_with_logits(logits, Y)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -297,7 +315,8 @@ while True:
             # looking at the source of that context manager, it just toggles this variable
             model.require_backward_grad_sync = (micro_step == gradient_accumulation_steps - 1)
         with ctx:
-            logits, loss = model(X, Y)
+            logits, _ = model(X)
+            loss = F.binary_cross_entropy_with_logits(logits, Y)
             loss = loss / gradient_accumulation_steps # scale the loss to account for gradient accumulation
         # immediately async prefetch next batch while model is doing the forward pass on the GPU
         X, Y = get_batch('train')
