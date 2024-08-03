@@ -237,9 +237,7 @@ def estimate_loss():
             X, Y = get_batch(split)
             with ctx:
                 # Pull logits from model output
-                logits, _ = model(X)
-                # Apply BCE loss to sigmoid-ed logits and binary vector of valid next tokens
-                loss = F.binary_cross_entropy_with_logits(logits, Y)
+                logits, loss = model(X, Y)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
@@ -315,8 +313,7 @@ while True:
             # looking at the source of that context manager, it just toggles this variable
             model.require_backward_grad_sync = (micro_step == gradient_accumulation_steps - 1)
         with ctx:
-            logits, _ = model(X)
-            loss = F.binary_cross_entropy_with_logits(logits, Y)
+            logits, loss = model(X, Y)
             loss = loss / gradient_accumulation_steps # scale the loss to account for gradient accumulation
         # immediately async prefetch next batch while model is doing the forward pass on the GPU
         X, Y = get_batch('train')

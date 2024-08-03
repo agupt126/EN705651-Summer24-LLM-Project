@@ -60,7 +60,7 @@ class DataAugmenter:
     return valid_mask
 
   def _update_boolean_vector_batch(self, substitutes_batch, valid_mask):
-    boolean_vector_batch = torch.zeros((substitutes_batch.size(0), self.vocabulary_size), dtype=torch.bool)
+    boolean_vector_batch = torch.zeros((substitutes_batch.size(0), self.vocabulary_size), dtype=torch.float16)
 
     valid_indices = substitutes_batch[valid_mask]
     batch_indices = torch.arange(substitutes_batch.size(0)).to(self.device).repeat_interleave(valid_mask.sum(dim=-1))
@@ -71,7 +71,7 @@ class DataAugmenter:
   def augment(self, X, target_indices=None, do_filter=True):
     batch_size = X.shape[0]
     block_size = X.shape[1]
-    boolean_vector = torch.zeros((batch_size, block_size, self.vocabulary_size), dtype=torch.bool)
+    boolean_vector = torch.zeros((batch_size, block_size, self.vocabulary_size), dtype=torch.float16)
     i = torch.arange(batch_size).repeat_interleave(block_size)
     j = torch.arange(block_size).repeat(batch_size)
     k = X[:, :, None].flatten()
