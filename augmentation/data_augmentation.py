@@ -59,7 +59,7 @@ class DataAugmenter:
 
     return valid_mask
 
-  def _create_boolean_vector_batch(self, substitutes_batch, valid_mask):
+  def _update_boolean_vector_batch(self, substitutes_batch, valid_mask):
     boolean_vector_batch = torch.zeros((substitutes_batch.size(0), self.vocabulary_size), dtype=torch.float16)
 
     valid_indices = substitutes_batch[valid_mask]
@@ -69,6 +69,14 @@ class DataAugmenter:
     return boolean_vector_batch
 
   def augment(self, X, target_indices=None, do_filter=True):
+    batch_size = X.shape[0]
+    block_size = X.shape[1]
+    boolean_vector = torch.zeros((batch_size, block_size, self.vocabulary_size), dtype=torch.float16)
+    i = torch.arange(batch_size).repeat_interleave(block_size)
+    j = torch.arange(block_size).repeat(batch_size)
+    k = X[:, :, None].flatten()
+    boolean_vector[i, j, k] = 1
+
     # Use user-supplied target_indices if available, else generate random indices
     if target_indices is None:
       target_indices = torch.randint(low=0, high=X.shape[1], size=(X.shape[0],))
@@ -80,13 +88,14 @@ class DataAugmenter:
     else:
         valid_mask = torch.ones((X.size(0), self.k), dtype=bool).to(self.device)
 
-    boolean_vector = self._create_boolean_vector_batch(substitutes, valid_mask)
+    i = torch.arange(batch_size)
+    boolean_vector[i, target_indices, :] = self._update_boolean_vector_batch(substitutes, valid_mask)
 
     del substitutes
     del valid_mask
     torch.cuda.empty_cache()
 
-    return boolean_vector[:, None, :], target_indices
+    return boolean_vector, target_indices
 
   def generate_new_sentences(self, input_ids_batch, target_indices, boolean_vector_batch):
     vocabulary = list(self.tokenizer.get_vocab().keys())

@@ -183,19 +183,8 @@ class GPT(nn.Module):
 
         logits = self.lm_head(x) # logits of shape (b, t, vocab_size)
         
-        if targets is not None:
-            # Convert targets to one-hot encoding
-            targets_one_hot = torch.zeros_like(logits).scatter_(2, targets.unsqueeze(-1), 1)
-            
-            # Check the shapes of logits and targets_one_hot before reshaping
-            #print(f"logits shape: {logits.shape}")
-            #print(f"targets_one_hot shape: {targets_one_hot.shape}")
-            
-            # Flatten logits and targets for binary cross-entropy
-            logits_flat = logits.view(-1, logits.size(-1)) # shape (b*t, vocab_size)
-            targets_flat = targets_one_hot.view(-1, logits.size(-1)).float() # shape (b*t, vocab_size)
-            
-            loss = F.binary_cross_entropy_with_logits(logits_flat, targets_flat, reduction='mean')
+        if targets is not None:          
+            loss = F.binary_cross_entropy_with_logits(logits, targets, reduction='mean')
         else:
             # Inference-time optimization
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
