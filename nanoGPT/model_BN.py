@@ -6,7 +6,7 @@ https://github.com/openai/gpt-2/blob/master/src/model.py
 2) huggingface/transformers PyTorch implementation:
 https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py
 """
-
+import pdb
 import math
 import inspect
 from dataclasses import dataclass
@@ -15,28 +15,13 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-import pyro
-import pyro.distributions as dist
-from pyro.nn import PyroSample, PyroModule
+import math
 
-
-class BayesianLinear(PyroModule):
-    def __init__(self, in_features, out_features):
-        super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        self.weight = PyroSample(dist.Normal(0., 1.).expand([out_features, in_features]).to_event(2))
-        self.bias = PyroSample(dist.Normal(0., 1.).expand([out_features]).to_event(1))
-       
-        # Register weight as a parameter to allow weight tying
-        self.register_parameter("weight_param", nn.Parameter(torch.randn(out_features, in_features)))
-        self.register_parameter("bias_param", nn.Parameter(torch.randn(out_features)))
-
-    def forward(self, input):
-        weight = self.weight_param
-        bias = self.bias_param
-        return torch.nn.functional.linear(input, weight, bias)
-
+import torch
+from torch.nn import Module, Parameter
+import torch.nn.init as init
+import torch.nn.functional as F
+import torchbnn as bnn
 
 
 class LayerNorm(nn.Module):
@@ -146,7 +131,7 @@ class GPT(nn.Module):
         assert config.vocab_size is not None
         assert config.block_size is not None
         self.config = config
-
+        
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(config.vocab_size, config.n_embd),
             wpe = nn.Embedding(config.block_size, config.n_embd),
@@ -164,10 +149,10 @@ class GPT(nn.Module):
 
 
         # Use Bayesian linear layer instead of standard linear layer
-        self.lm_head = BayesianLinear(config.n_embd, config.vocab_size)
-        
+        #self.lm_head = BayesLinear(prior_mu = 0, prior_sigma = .02, in_features=config.n_embd, out_features=config.vocab_size)
+        self.lm_head = bnn.BayesLinear(prior_mu = 0, prior_sigma = .02, in_features=config.n_embd, out_features=config.vocab_size, bias=True)
         # Ensure the weights are shared correctly
-        self.transformer.wte.weight = self.lm_head.weight_param
+        self.transformer.wte.weight = self.lm_head.weight_mu
 
         # init all weights
         self.apply(self._init_weights)
@@ -199,6 +184,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
+    """
     #Bayesian forward pass
     def forward(self, idx, targets=None):
         device = idx.device
@@ -224,11 +210,11 @@ class GPT(nn.Module):
         else:
             logits = logits[:, -1, :]
             loss = None
-
+        
         return logits, loss
-
-    
     """
+    
+    
     #Softmax Forward pass
     def forward(self, idx, targets=None):
         device = idx.device
@@ -255,46 +241,7 @@ class GPT(nn.Module):
             loss = None
 
         return logits, loss
-    """    
-
-    """
-    # Sigmoid forward pass
-    def forward(self, idx, targets=None):
-        device = idx.device
-        b, t = idx.size()
-        assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
-        pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
-
-        # forward the GPT model itself
-        tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer.wpe(pos) # position embeddings of shape (t, n_embd)
-        x = self.transformer.drop(tok_emb + pos_emb)
-        for block in self.transformer.h:
-            x = block(x)
-        x = self.transformer.ln_f(x)
-
-        logits = self.lm_head(x) # logits of shape (b, t, vocab_size)
         
-        if targets is not None:
-            # Convert targets to one-hot encoding
-            targets_one_hot = torch.zeros_like(logits).scatter_(2, targets.unsqueeze(-1), 1)
-            
-            # Check the shapes of logits and targets_one_hot before reshaping
-            #print(f"logits shape: {logits.shape}")
-            #print(f"targets_one_hot shape: {targets_one_hot.shape}")
-            
-            # Flatten logits and targets for binary cross-entropy
-            logits_flat = logits.view(-1, logits.size(-1)) # shape (b*t, vocab_size)
-            targets_flat = targets_one_hot.view(-1, logits.size(-1)).float() # shape (b*t, vocab_size)
-            
-            loss = F.binary_cross_entropy_with_logits(logits_flat, targets_flat, reduction='mean')
-        else:
-            # Inference-time optimization
-            logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
-            loss = None
-
-        return logits, loss
-    """
 
     def crop_block_size(self, block_size):
         # model surgery to decrease the block size if necessary
