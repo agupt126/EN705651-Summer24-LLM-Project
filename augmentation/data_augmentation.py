@@ -104,7 +104,7 @@ class DataAugmenter:
     sentences = self.tokenizer.batch_decode(input_ids_batch, skip_special_tokens=True)
     for i, sentence in enumerate(sentences):
       new_sentences = []
-      for idx, is_valid in enumerate(boolean_vector_batch[i]):
+      for idx, is_valid in enumerate(boolean_vector_batch[i][target_indices[i]]):
         if is_valid:
           new_input_ids = input_ids_batch[i].clone()
           new_input_ids[target_indices[i]] = idx
