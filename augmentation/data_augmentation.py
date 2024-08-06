@@ -48,16 +48,35 @@ class DataAugmenter:
     return torch.exp(loss)
 
   def _filter_valid_substitutes(self, input_ids_batch, substitutes_batch, target_indices):
-    batch_size, seq_len = input_ids_batch.size()
-    valid_mask = torch.zeros_like(substitutes_batch, dtype=torch.bool)
+        batch_size, seq_len = input_ids_batch.size()
+        substitutes_count = substitutes_batch.size(1)
 
-    for i in range(substitutes_batch.size(1)):
-        new_input_ids_batch = input_ids_batch.clone()
-        new_input_ids_batch[torch.arange(batch_size), target_indices] = substitutes_batch[:, i]
-        perplexity = self._calculate_perplexity(new_input_ids_batch)
-        valid_mask[:, i] = perplexity < self.perplexity_threshold
+        # Expand target_indices for each substitute
+        expanded_target_indices = target_indices.unsqueeze(1).expand(-1, substitutes_count)
+        
+        # Create a mask for valid substitutes
+        valid_mask = torch.zeros((batch_size, substitutes_count), dtype=torch.bool).to(self.device)
 
-    return valid_mask
+        # Flatten the substitutes and expanded_target_indices for batch processing
+        flat_substitutes = substitutes_batch.flatten()
+        flat_expanded_target_indices = expanded_target_indices.flatten()
+
+        # Create input_ids_batch repeated for each substitute
+        repeated_input_ids_batch = input_ids_batch.unsqueeze(1).expand(-1, substitutes_count, -1).reshape(-1, seq_len)
+
+        # Replace target indices with substitutes
+        repeated_input_ids_batch[torch.arange(repeated_input_ids_batch.size(0)), flat_expanded_target_indices] = flat_substitutes
+
+        # Calculate perplexity for the modified inputs
+        flat_perplexity = self._calculate_perplexity(repeated_input_ids_batch)
+        
+        # Reshape the perplexity back to (batch_size, substitutes_count)
+        perplexity = flat_perplexity.reshape(batch_size, substitutes_count)
+
+        # Apply the perplexity threshold
+        valid_mask = perplexity < self.perplexity_threshold
+
+        return valid_mask
 
   def _update_boolean_vector_batch(self, substitutes_batch, valid_mask):
     boolean_vector_batch = torch.zeros((substitutes_batch.size(0), self.vocabulary_size), dtype=torch.float16)
