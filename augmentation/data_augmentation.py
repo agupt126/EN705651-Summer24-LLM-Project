@@ -67,32 +67,53 @@ class DataAugmenter:
 
     boolean_vector_batch[batch_indices, valid_indices] = 1
     return boolean_vector_batch
+  
+  def _create_boolean_vector_without_filtering(self, X, ratio=0.5, k=50):
+    with torch.no_grad():
+      outputs = self.model(X)
+      logits = outputs.logits
+    batch_size = logits.shape[0]
+    block_size = logits.shape[1]
+    vocab_size = logits.shape[2]
+    n = round(block_size * ratio)
+    swap_indices = torch.stack([torch.randperm(block_size)[:n] for _ in range(batch_size)])  # batch_size x n_swaps (n)
+    target_logits = logits[torch.arange(batch_size).repeat_interleave(n), swap_indices.flatten(), :].view(batch_size, n, vocab_size)
+    _, top_k_indices = torch.topk(target_logits, k, dim=-1)
+    boolean_vector = torch.zeros(batch_size, block_size, vocab_size)
+    a = torch.arange(batch_size).repeat_interleave(n * k)
+    b = swap_indices.repeat(1, k).flatten()
+    c = top_k_indices.flatten()
+    boolean_vector[a, b, c] = 1
+    return boolean_vector
 
   def augment(self, X, target_indices=None, do_filter=True):
-    batch_size = X.shape[0]
-    block_size = X.shape[1]
-    boolean_vector = torch.zeros((batch_size, block_size, self.vocabulary_size), dtype=torch.float16)
-    i = torch.arange(batch_size).repeat_interleave(block_size)
-    j = torch.arange(block_size).repeat(batch_size)
-    k = X[:, :, None].flatten()
-    boolean_vector[i, j, k] = 1
+    # batch_size = X.shape[0]
+    # block_size = X.shape[1]
+    # boolean_vector = torch.zeros((batch_size, block_size, self.vocabulary_size), dtype=torch.float16)
+    # i = torch.arange(batch_size).repeat_interleave(block_size)
+    # j = torch.arange(block_size).repeat(batch_size)
+    # k = X[:, :, None].flatten()
+    # boolean_vector[i, j, k] = 1
 
     # Use user-supplied target_indices if available, else generate random indices
-    if target_indices is None:
-      target_indices = torch.randint(low=0, high=X.shape[1], size=(X.shape[0],))
+    # if target_indices is None:
+    #   target_indices = torch.randint(low=0, high=X.shape[1], size=(X.shape[0],))
 
-    substitutes = self._generate_substitutes(X, target_indices)
+    # substitutes = self._generate_substitutes(X, target_indices)
 
-    if do_filter:
-        valid_mask = self._filter_valid_substitutes(X, substitutes, target_indices)
-    else:
-        valid_mask = torch.ones((X.size(0), self.k), dtype=bool).to(self.device)
+    # if do_filter:
+    #     valid_mask = self._filter_valid_substitutes(X, substitutes, target_indices)
+    # else:
+    #     valid_mask = torch.ones((X.size(0), self.k), dtype=bool).to(self.device)
 
-    i = torch.arange(batch_size)
-    boolean_vector[i, target_indices, :] = self._update_boolean_vector_batch(substitutes, valid_mask)
+    # i = torch.arange(batch_size)
+    # boolean_vector[i, target_indices, :] = self._update_boolean_vector_batch(substitutes, valid_mask)
 
-    del substitutes
-    del valid_mask
+    boolean_vector = self._create_boolean_vector_without_filtering(X, ratio=0.5, k=50)
+    target_indices = None  # Not currently returning this in create_boolean_vector_without_filtering()
+
+    # del substitutes
+    # del valid_mask
     torch.cuda.empty_cache()
 
     return boolean_vector, target_indices
@@ -104,7 +125,7 @@ class DataAugmenter:
     sentences = self.tokenizer.batch_decode(input_ids_batch, skip_special_tokens=True)
     for i, sentence in enumerate(sentences):
       new_sentences = []
-      for idx, is_valid in enumerate(boolean_vector_batch[i]):
+      for idx, is_valid in enumerate(boolean_vector_batch[i][target_indices[i]]):
         if is_valid:
           new_input_ids = input_ids_batch[i].clone()
           new_input_ids[target_indices[i]] = idx
