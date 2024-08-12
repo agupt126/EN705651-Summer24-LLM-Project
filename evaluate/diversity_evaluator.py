@@ -1,7 +1,9 @@
 import torch
 from sacrebleu import corpus_bleu
-from rouge import Rouge
-from nltk.translate.meteor_score import meteor_score
+from concurrent.futures import ThreadPoolExecutor
+from nltk.util import ngrams
+import numpy as np
+from functools import lru_cache
 
 class TextQualityEvaluator:
     """
@@ -13,26 +15,25 @@ class TextQualityEvaluator:
             gram: The n-gram size for Distinct-n calculation (default: 4).
         """
         self.gram = gram
-    
-    def calculate_self_bleu(self,generated_texts):
-        scores = []
+
+    @lru_cache(None)  # Cache BLEU scores to avoid redundant calculations
+    def _cached_bleu_score(self, hypothesis, references):
+        bleu_score = corpus_bleu([hypothesis], [[ref] for ref in references], use_effective_order=True)
+        return bleu_score.score
+
+    def calculate_self_bleu(self, generated_texts):
         num_texts = len(generated_texts)
         
-        for i in range(num_texts):
-             # Hypothesis is the current text
+        def compute_bleu(i):
             hypothesis = generated_texts[i]
-            
-            # References are all other texts
             references = [generated_texts[j] for j in range(num_texts) if j != i]
-            
-            # sacrebleu expects references to be a list of lists of strings
-            bleu_score = corpus_bleu([hypothesis], [[ref] for ref in references])
-            scores.append(bleu_score.score)
+            return self._cached_bleu_score(hypothesis, tuple(references))
         
-        # Average the scores
+        with ThreadPoolExecutor() as executor:
+            scores = list(executor.map(compute_bleu, range(num_texts)))
+        
         average_score = sum(scores) / len(scores) if scores else 0
         return average_score
-    
 
     def calculate_distinct_n(self, generated_texts):
         """
@@ -44,14 +45,13 @@ class TextQualityEvaluator:
         Returns:
             The proportion of unique n-grams.
         """
-        total_tokens = 0
         unique_ngrams = set()
+        total_tokens = 0
+        
         for text in generated_texts:
             tokens = text.split()
             total_tokens += len(tokens)
-            for i in range(len(tokens) - self.gram + 1):
-                ngram = " ".join(tokens[i:i+self.gram])
-                unique_ngrams.add(ngram)
+            unique_ngrams.update(ngrams(tokens, self.gram))
         
         return len(unique_ngrams) / total_tokens if total_tokens > 0 else 0  # Avoid division by zero
 
@@ -68,33 +68,18 @@ class TextQualityEvaluator:
         scores = {}
 
         # Calculate Self-BLEU score
-        score =  self.calculate_self_bleu(generated_texts)
-        scores["self_bleu"] = score
+        scores["self_bleu"] = self.calculate_self_bleu(generated_texts)
 
         # Calculate Distinct-n score
-        distinct_n_score = self.calculate_distinct_n(generated_texts)
-        scores["distinct_n"] = distinct_n_score
-    
-      
+        scores["distinct_n"] = self.calculate_distinct_n(generated_texts)
 
         return scores
 
-
-
-
+# Example usage:
 # generated_texts = [
 #     "the quick brown fox jumps over the lazy dog",
 #     "the cat sat on the mat"
 # ]
-
-# reference_texts = [
-#     "the quick brown fox jumped over the lazy dog",
-#     "the cat is sitting on the mat"
-# ]
-
 # evaluator = TextQualityEvaluator()
-
-# # Calculate all metrics
 # scores = evaluator.evaluate(generated_texts)
 # print(scores)
-
