@@ -25,7 +25,7 @@ These innovations represent a significant step forward in the development of mor
 
 ## Navigating Repository
 The bulk of this codebase belongs inside `nanoGPT/`: an altered version of Andrej Karpathy's [GPT2 Tutorial Repo](https://github.com/karpathy/nanoGPT). The original README is copied into this subdirectory which provides guidelines for running the baseline model. 
-We designed our test models to mimic the existing framework, and thus training our test models merely involves a file name swap usually. Within `nanoGPT`, you will also find `prepare.py` scripts for available datasets. Our results hone in on wikitext for this repository. 
+We designed our test models to mimic the existing framework, and thus training our test models merely involves a file name swap usually. Within `nanoGPT`, you will also find `prepare.py` scripts for available datasets. Our results hone in on wikitext for this repository. Finally within `training_logs/`, you will find printed log data of our training experiments.
 
 `augmentation/` is an extension developed to support the training data needs for our theoretical sigmoid models.
 
@@ -44,13 +44,24 @@ torchrun train_sigmoid.py config/train_sigmoid_gpt2_wikitext_100m.py
 
 *Note "torchrun" should only be used if `cuda` is set to **True**. If you are training a model that is greater than 20M parameters, I highly recommend using CUDA-enabled GPUs. If using CPU, use "python" instead.
 
+## WandB Training
+![image](https://github.com/user-attachments/assets/4ea9f55c-9096-43c2-b672-d8312f445c07)
+
+
+![image](https://github.com/user-attachments/assets/f45390d5-2978-4b6b-8e48-92c7e13d4b3e)
+
+
+
+
 
 ## Recommended Resources
 * See our paper to dive deeper into the theory behind model implementations, results, and analysis.
-* GPU compute is necessary to train significant models in a reasonable amount of time. We recommend Lightning AI for cloud based development and GPUs.
+* GPU compute is necessary to train significant models in a reasonable amount of time. We recommend [Lightning AI](https://lightning.ai/) for cloud based development and GPUs.
+* [Karpathy GPT2 YouTube Tutorial](https://www.youtube.com/watch?v=l8pRSuU81PU)
 * [Original Transformers Paper](https://arxiv.org/abs/1706.03762)
 * [OpenAI GPT-2 Paper](https://d4mucfpksywv.cloudfront.net/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
 * [OpenAI GPT-3 Paper](https://arxiv.org/abs/2005.14165)
+  
 
 
 
