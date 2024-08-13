@@ -1,0 +1,23 @@
+Testing model!
+Start time Mon Aug 12 10:06:21 PM EDT 2024
+Number of Nodes Allocated     = 1
+Overriding: out_dir = out-wikitext-gpt2-sigmoid
+/home/guptaa2/EN705651-Summer24-LLM-Project/nanoGPT/test.py:43: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(ckpt_path, map_location=device)
+number of parameters: 123.55M
+Loop: 0
+/home/guptaa2/EN705651-Summer24-LLM-Project/nanoGPT/test.py:93: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.no_grad(), torch.cuda.amp.autocast(device_type == 'cuda'):
+Loop: 1
+Loop: 2
+Loop: 3
+Loop: 4
+Loop: 5
+Loop: 6
+Loop: 7
+Loop: 8
+Loop: 9
+Average Evaluation Scores:
+{'self_bleu': 18.596962817530237, 'distinct_n': 0.9907896782839989}
+Finished!
+End time Mon Aug 12 10:08:49 PM EDT 2024

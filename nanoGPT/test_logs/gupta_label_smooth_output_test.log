@@ -1,0 +1,18 @@
+Testing model!
+Start time Sun Aug 11 02:50:27 PM EDT 2024
+Number of Nodes Allocated     = 1
+/home/guptaa2/EN705651-Summer24-LLM-Project/nanoGPT/perplexity_smooth.py:48: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(ckpt_path, map_location=device)
+number of parameters: 123.59M
+No meta.pkl found, assuming GPT-2 encodings...
+Today, I think I might know that some day we would have created a universe for so long that we would have never held a machine of anything but human beings . Who are the thing where old evil , good and evil are the values of the Universe . 
+<|endoftext|><|endoftext|> = = = Musical = = = 
+<|endoftext|><|endoftext|><|endoftext|><|endoftext|><|endoftext|><|endoftext|> = = Background = = 
+<|endoftext|> " Confessions of a Broken Heart ( Daughter to Father ) " was the first single from the album , being released via Epic Records on December 16 , 2006 . The song was written by rapping from Usher , a Swedish student at the time , but it also makes use of the singer 's falsetto . It was produced by Swedish House Mafia , who had previously worked with Usher on " 87 cm " ( 3 @.@ 80 ft ) productions . Usher was pleased with the track and compared its sound to Usher 's earlier tracks on Confessions . 
+<|endoftext|><|endoftext|> The fruit bodies of Mycena flavoalba grow with white , or with warty mushrooms . The caps of young mushrooms are initially convex with an edge , later flattening out , and reaching diameters of 6 to 12 cm ( 2 @.@ 4 to Jakarta . ) the color ranges from nearly white or orange to pale pinkish or reddish , to grayish or yellowish . The pores are small and angular , measuring 0 – 2 mm in diameter and are initially depressed in egg @-@ shaped development , although they become sloping with maturity . In maturity , they become more elongated with age . The stipe is white and 4 – 15 cm ( 1 @.@ 6 – 6 @.@ 9 in ) long and 2 – 3 cm ( 0 @.@ 8 – 1 @.@ 2 in ) wide but becomes hollow with age . The surface of the thick , scab , and the base of the stipe stain darken with iodine . The color of the stem ranges from fibrils to pitch @-@ like . The spore print is pale yellow , while the base of the stipe is a whitish @-@ buff . All parts of the fruit body ( cap ) are somewhat fibrillose ( hyaline ) . 
+<|endoftext|> = = = Accolades = = = 
+<|endoftext|> A recent hold @-@ ed in support of the 2007 bill was echoed by the Joint Board on Law Broncos by Gareth Nash , the head of the National Association for
+---------------
+Perplexity: 7.2703704833984375
+Finished!
+End time Sun Aug 11 02:50:40 PM EDT 2024

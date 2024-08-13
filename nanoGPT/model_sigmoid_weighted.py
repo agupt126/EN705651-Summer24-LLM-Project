@@ -167,7 +167,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None):
+    def forward(self, idx, targets=None, pos_weight=1000):
         device = idx.device
         b, t = idx.size()
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
@@ -184,8 +184,8 @@ class GPT(nn.Module):
         logits = self.lm_head(x) # logits of shape (b, t, vocab_size)
         
         if targets is not None:          
-            #loss = F.binary_cross_entropy_with_logits(logits, targets, reduction='mean')
-            loss = 0
+            pos_weight_tensor = torch.full_like(targets, pos_weight)
+            loss = F.binary_cross_entropy_with_logits(logits, targets, pos_weight=pos_weight_tensor, reduction='mean')
         else:
             # Inference-time optimization
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim

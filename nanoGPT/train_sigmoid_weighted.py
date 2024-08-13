@@ -28,7 +28,7 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
-from model_sigmoid import GPTConfig, GPT
+from model_sigmoid_weighted import GPTConfig, GPT
 
 
 import sys

@@ -15,6 +15,13 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+import torch
+from torch.nn import Module, Parameter
+import torch.nn.init as init
+import torch.nn.functional as F
+import torchbnn as bnn
+
+
 class LayerNorm(nn.Module):
     """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
 
@@ -130,12 +137,13 @@ class GPT(nn.Module):
             h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             ln_f = LayerNorm(config.n_embd, bias=config.bias),
         ))
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        #self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        self.lm_head = bnn.BayesLinear(prior_mu = 0, prior_sigma = .02, in_features=config.n_embd, out_features=config.vocab_size, bias=True)
         # with weight tying when using torch.compile() some warnings get generated:
         # "UserWarning: functional_call was passed multiple values for tied weights.
         # This behavior is deprecated and will be an error in future versions"
         # not 100% sure what this is, so far seems to be harmless. TODO investigate
-        self.transformer.wte.weight = self.lm_head.weight # https://paperswithcode.com/method/weight-tying
+        self.transformer.wte.weight = self.lm_head.weight_mu # https://paperswithcode.com/method/weight-tying
 
         # init all weights
         self.apply(self._init_weights)
@@ -167,7 +175,14 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None):
+    def regularized_bce_loss(self, outputs, targets, lambda_reg=0.1):
+        bce = F.binary_cross_entropy(outputs, targets)
+        sum_probs = outputs.sum(dim=-1)
+        regularization = lambda_reg * ((sum_probs - 1) ** 2).mean()
+        return bce + regularization
+
+
+    def forward(self, idx, targets=None, pos_weight=1000):
         device = idx.device
         b, t = idx.size()
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
@@ -183,9 +198,14 @@ class GPT(nn.Module):
 
         logits = self.lm_head(x) # logits of shape (b, t, vocab_size)
         
-        if targets is not None:          
-            #loss = F.binary_cross_entropy_with_logits(logits, targets, reduction='mean')
-            loss = 0
+        if targets is not None:
+            # Convert targets to one-hot encoding
+            
+            # Check the shapes of logits and targets_one_hot before reshaping
+            
+            # Flatten logits and targets for binary cross-entropy
+            pos_weight_tensor = torch.full_like(targets, pos_weight)    
+            loss = F.binary_cross_entropy_with_logits(logits, targets, pos_weight=pos_weight_tensor, reduction='mean')
         else:
             # Inference-time optimization
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim

@@ -1,0 +1,23 @@
+Testing model!
+Start time Sun Aug 11 02:45:12 PM EDT 2024
+Number of Nodes Allocated     = 1
+/home/guptaa2/EN705651-Summer24-LLM-Project/nanoGPT/perplexity_sigmoid.py:48: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(ckpt_path, map_location=device)
+number of parameters: 123.55M
+No meta.pkl found, assuming GPT-2 encodings...
+Today, I think I might- any 10 the four's they have we as for so his all in for and' ( with<|endoftext|> " which second on after E ( under " an, through also . had an they but/ for D. for during out ' to of and then more did 10 ' ,: an will- of and at , , the could with The ,'s a " she as several 1 '
+ after from In a To which On 2 with a early the with – . St more on
+ from made an all : 10's – was — 20 ['s " or1 with at more
+ At ina 15 used , also this like at an One & for all: this M would -- first A some/ before made only. I , as, 1. at
+ at due N's and 1 This [  : 4 without the in as
+ a a,, that " on, U each 1 in, E on ;" .<|endoftext|> of has C/,
+ E time , For was during by's 15, two a just [ and with if over could. : of this for new as's, to the for my with just for & last even N one the by along a without 2 their " a a, during of that 3 it ; the ' 1
+ have, 2 along ) was's very of as on<|endoftext|>s/ only at which such these In of that more or's that through M a on and The when and 9 for through
+: by some of or & on to , to all they ". and during more at time for no on for some one's " ( from / after in some every where when to 12 both time , K from – 5 first I there . that, not
+
+ or with — B. . would, had [ C! 10. but M over with ; first on when A 7 , first their. , M to,, after by on by ( There 6 [ ' as its our The this The at and onS: also through two then in . K U at D for more1- a To 16 2 - an the two while in time one the ( " in a ( D has with and would very by that a under, a did can that The . ' what now , over on where , in to an a and have on A C; which: ( as in for our 7 by I 10 and in the & his - what on all around R,
+ ( forThe its and ,
+---------------
+Perplexity: 2134.704345703125
+Finished!
+End time Sun Aug 11 02:45:26 PM EDT 2024

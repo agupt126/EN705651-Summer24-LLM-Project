@@ -6,13 +6,23 @@ import pickle
 from contextlib import nullcontext
 import torch
 import tiktoken
-from model_sigmoid import GPTConfig, GPT
 
+from model import GPTConfig, GPT
+
+import numpy as np
+import pdb
+from torch.nn import functional as F
+
+
+batch_size = 12
+block_size = 1024
+dataset = 'wikitext'
+data_dir = os.path.join('data', dataset)
 # -----------------------------------------------------------------------------
 init_from = 'resume' # either 'resume' (from an out_dir) or a gpt2 variant (e.g. 'gpt2-xl')
-out_dir = 'out' # ignored if init_from is not 'resume'
-start = "\n" # or "" or etc. Can also specify a file, use as: "FILE:prompt.txt"
-num_samples = 10 # number of samples to draw
+out_dir = 'out-wikitext-gpt2-labelsmooth' # ignored if init_from is not 'resume'
+start = "\n" # or "<|endoftext|>" or etc. Can also specify a file, use as: "FILE:prompt.txt"
+num_samples = 1 # number of samples to draw
 max_new_tokens = 500 # number of tokens generated in each sample
 temperature = 0.8 # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
 top_k = 200 # retain only the top_k most likely tokens, clamp others to have 0 probability
@@ -31,24 +41,6 @@ device_type = 'cuda' if 'cuda' in device else 'cpu' # for later use in torch.aut
 ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torch.float16}[dtype]
 ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
 
-# Define the rename_state_dict_keys function
-def rename_state_dict_keys(state_dict):
-    new_state_dict = {}
-    for key in state_dict.keys():
-        if key == "lm_head.weight":
-            new_key = "lm_head.weight_param"
-        elif key == "lm_head.bias":
-            new_key = "lm_head.bias_param"
-        # Correctly handle keys without adding extra _param suffix
-        elif key == "lm_head.weight_param_param":
-            new_key = "lm_head.weight_param"
-        elif key == "lm_head.bias_param_param":
-            new_key = "lm_head.bias_param"
-        else:
-            new_key = key
-        new_state_dict[new_key] = state_dict[key]
-    return new_state_dict
-
 # model
 if init_from == 'resume':
     # init from a model saved in a specific directory
@@ -61,10 +53,6 @@ if init_from == 'resume':
     for k,v in list(state_dict.items()):
         if k.startswith(unwanted_prefix):
             state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
-    
-    # Rename the keys in the state dictionary
-    state_dict = rename_state_dict_keys(state_dict)
-    
     model.load_state_dict(state_dict)
 elif init_from.startswith('gpt2'):
     # init from a given GPT-2 model
@@ -92,13 +80,14 @@ else:
     # ok let's assume gpt-2 encodings by default
     print("No meta.pkl found, assuming GPT-2 encodings...")
     enc = tiktoken.get_encoding("gpt2")
-    encode = lambda s: enc.encode(s, allowed_special={""})
+    encode = lambda s: enc.encode(s, allowed_special={"<|endoftext|>"})
     decode = lambda l: enc.decode(l)
 
 # encode the beginning of the prompt
 if start.startswith('FILE:'):
     with open(start[5:], 'r', encoding='utf-8') as f:
         start = f.read()
+start = "Today, I think I might"
 start_ids = encode(start)
 x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
 
@@ -109,3 +98,62 @@ with torch.no_grad():
             y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
             print(decode(y[0].tolist()))
             print('---------------')
+
+def get_batch(split):
+    # We recreate np.memmap every batch to avoid a memory leak, as per
+    # https://stackoverflow.com/questions/45132940/numpy-memmap-memory-usage-want-to-iterate-once/61472122#61472122
+    if split == 'train':
+        data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
+    else:
+        data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
+    ix = torch.randint(len(data) - block_size, (batch_size,))
+    x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
+    y = torch.stack([torch.from_numpy((data[i+1:i+1+block_size]).astype(np.int64)) for i in ix])
+    if device_type == 'cuda':
+        # pin arrays x,y, which allows us to move them to GPU asynchronously (non_blocking=True)
+        x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
+    else:
+        x, y = x.to(device), y.to(device)
+    return x, y
+
+
+sigmoid_model = False
+smooth_model = False
+# Assuming model is your trained language model and data_loader is your test data loader
+model.eval()  # Set model to evaluation mode
+
+log_likelihood = 0
+num_tokens = 0
+loops = 100
+total_loss = 0
+for i in range(loops):
+    input_ids, labels = get_batch('train')
+    """
+    with torch.no_grad():
+        logits, loss = model(input_ids, labels)
+        if sigmoid_model:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1), ignore_index=-1)
+        if smooth_model:
+            loss = F.cross_entropy(logits, labels)
+        log_likelihood -= loss.item() * input_ids.size(1)
+        num_tokens += input_ids.size(1)
+    """
+    
+    attention_mask = (input_ids != 0).float()
+    
+    with torch.no_grad():
+        logits, loss = model(input_ids, labels)
+        if sigmoid_model:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1), ignore_index=-1)
+        if smooth_model:
+            loss = F.cross_entropy(logits, labels)
+
+        # Multiply by the number of non-padding tokens to get the total log likelihood for this batch
+        token_count = attention_mask.sum().item()
+        log_likelihood -= loss * token_count
+        #num_tokens += token_count
+        total_loss += loss
+perplexity = torch.exp(total_loss/loops)
+#perplexity = torch.exp(torch.tensor(log_likelihood / num_tokens))
+#perplexity = perplexity/loops
+print(f"Perplexity: {perplexity.item()}")

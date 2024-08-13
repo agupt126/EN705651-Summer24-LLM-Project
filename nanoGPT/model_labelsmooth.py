@@ -167,7 +167,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None):
+    def forward(self, idx, targets=None, label_smoothing_eps=0.05):
         device = idx.device
         b, t = idx.size()
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
@@ -181,18 +181,19 @@ class GPT(nn.Module):
             x = block(x)
         x = self.transformer.ln_f(x)
 
-        logits = self.lm_head(x) # logits of shape (b, t, vocab_size)
-        
-        if targets is not None:          
-            #loss = F.binary_cross_entropy_with_logits(logits, targets, reduction='mean')
-            loss = 0
+        logits = self.lm_head(x)
+
+        if targets is not None:
+            # Compute loss with label smoothing
+            lprobs = F.log_softmax(logits, dim=-1)
+            loss = label_smoothed_nll_loss(lprobs.view(-1, logits.size(-1)), targets.view(-1), label_smoothing_eps)
         else:
-            # Inference-time optimization
+            # inference-time mini-optimization: only forward the lm_head on the very last position
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
             loss = None
 
         return logits, loss
-    
+
     def crop_block_size(self, block_size):
         # model surgery to decrease the block size if necessary
         # e.g. we may load the GPT2 pretrained model checkpoint (block size 1024)
@@ -321,14 +322,37 @@ class GPT(nn.Module):
             if top_k is not None:
                 v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
                 logits[logits < v[:, [-1]]] = -float('Inf')
-            # apply sigmoid to convert logits to (normalized) probabilities
-            probs = torch.sigmoid(logits)
-            probs = probs / torch.sum(probs)
-
-
+            # apply softmax to convert logits to (normalized) probabilities
+            probs = F.softmax(logits, dim=-1)
             # sample from the distribution
             idx_next = torch.multinomial(probs, num_samples=1)
             # append sampled index to the running sequence and continue
             idx = torch.cat((idx, idx_next), dim=1)
 
         return idx
+def label_smoothed_nll_loss(lprobs, target, eps):
+    """
+    Compute the label smoothed negative log likelihood loss.
+
+    Args:
+        lprobs (Tensor): Log probabilities of the model outputs.
+        target (Tensor): True labels.
+        eps (float): Smoothing parameter.
+
+    Returns:
+        Tensor: Loss value.
+    """
+    # Number of classes
+    n_classes = lprobs.size(-1)
+
+    # Smoothing value
+    smooth_value = eps / (n_classes - 1)
+
+    # One-hot encoded target labels
+    target = target.unsqueeze(-1)
+    smoothed_targets = torch.full_like(lprobs, fill_value=smooth_value)
+    smoothed_targets.scatter_(dim=-1, index=target, value=1.0 - eps)
+
+    # Compute the loss
+    loss = -torch.sum(smoothed_targets * lprobs, dim=-1)
+    return loss.mean()

@@ -166,6 +166,14 @@ class GPT(nn.Module):
                 torch.nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+    
+
+    def regularized_bce_loss(self, outputs, targets, lambda_reg=0.1):
+        bce = F.binary_cross_entropy(outputs, targets, reduction='mean')
+        sum_probs = outputs.sum(dim=-1)
+        regularization = lambda_reg * ((sum_probs - 1) ** 2).mean()
+        return bce + regularization
+
 
     def forward(self, idx, targets=None):
         device = idx.device
@@ -183,9 +191,11 @@ class GPT(nn.Module):
 
         logits = self.lm_head(x) # logits of shape (b, t, vocab_size)
         
-        if targets is not None:          
-            #loss = F.binary_cross_entropy_with_logits(logits, targets, reduction='mean')
-            loss = 0
+        if targets is not None:       
+            bce = F.binary_cross_entropy_with_logits(logits, targets, reduction='mean')
+            sum_probs = logits.sum(dim=-1)
+            regularization = 0.1 * ((sum_probs - 1) ** 2).mean() # 0.1 -> lambda_reg
+            loss = bce + regularization
         else:
             # Inference-time optimization
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
