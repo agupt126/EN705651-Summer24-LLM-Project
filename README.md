@@ -23,7 +23,10 @@ These innovations represent a significant step forward in the development of mor
 
 
 ## Navigating Repository
+The bulk of this codebase belongs inside `nanoGPT/`: an altered version of Andrej Karpathy's [GPT2 Tutorial Repo](https://github.com/karpathy/nanoGPT). The original README is copied into this subdirectory which provides guidelines for running the baseline model. 
+We designed our test models to mimic the existing framework, and thus training our test models merely involves a file name swap usually. Within `nanoGPT`, you will also find `prepare.py` scripts for available datasets. Our results hone in on wikitext for this repository. 
 
+`augmentation/` is an extension developed to support the training data needs for our theoretical sigmoid models.
 
 ## Instructions
 
