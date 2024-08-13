@@ -13,6 +13,7 @@ These innovations represent a significant step forward in the development of mor
 
 * Please ensure you have at least Python 3.10 installed.   
 * Install all libraries in `requirements.txt`
+* CUDA-Enabled GPU (optional but very recommended)
 
   ```
       conda create --name myenv
@@ -28,10 +29,28 @@ We designed our test models to mimic the existing framework, and thus training o
 
 `augmentation/` is an extension developed to support the training data needs for our theoretical sigmoid models.
 
-## Instructions
+A detailed paper outlining our approach and results is additionally included at this level. 
+
+## Run Instructions
+Unfortunately our weights are too large in size too include in this repository, so running will entail training a model from scratch. If you wish to run a model, adhere to the following steps:
+
+1) Choose a dataset to work with and navigate to `nanoGPT/data/`. Run the respective `prepare.py` file within the dataset folder you want to train on. This will generate significantly size .bin files that should be kept locally.
+2) Within `nanoGPT/config/`, find the appropriate .py file and edit training/model configuration parameters to your satisfaction. You will also need to indicate the proper dataset directory here.
+3) Once you have configuration parameters set and a model of interest, run the baseline train python command with edits on your naming. For example, if I wanted to run the sigmoid model...
+```
+cd nanoGPT
+torchrun train_sigmoid.py config/train_sigmoid_gpt2_wikitext_100m.py
+```
+
+*Note "torchrun" should only be used if `cuda` is set to **True**. If you are training a model that is greater than 20M parameters, I highly recommend using CUDA-enabled GPUs. If using CPU, use "python" instead.
 
 
 ## Recommended Resources
+* See our paper to dive deeper into the theory behind model implementations, results, and analysis.
+* GPU compute is necessary to train significant models in a reasonable amount of time. We recommend Lightning AI for cloud based development and GPUs.
+* [Original Transformers Paper](https://arxiv.org/abs/1706.03762)
+* [OpenAI GPT-2 Paper](https://d4mucfpksywv.cloudfront.net/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
+* [OpenAI GPT-3 Paper](https://arxiv.org/abs/2005.14165)
 
 
 
