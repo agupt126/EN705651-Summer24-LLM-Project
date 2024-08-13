@@ -1,5 +1,5 @@
 # Context
-Note this code is an alteration of the [nanoGPT](https://github.com/karpathy/nanoGPT) model repository created by Andrej Karpathy. We advance this codebase by adding modified model archietctures, logs of training runs, and performance evaluation metric code. For reference on the baseline framework, the original README is pasted below.
+Note this code is an alteration of the [nanoGPT](https://github.com/karpathy/nanoGPT) model repository created by Andrej Karpathy. We advance this codebase by adding modified model architectures, logs of training runs, and performance evaluation metric code. For reference on the baseline framework, the original README is pasted below.
 
 # nanoGPT
 
