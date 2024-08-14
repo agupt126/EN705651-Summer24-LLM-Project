@@ -55,7 +55,7 @@ torchrun train_sigmoid.py config/train_sigmoid_gpt2_wikitext_100m.py
 
 
 ## Recommended Resources
-* See our paper to dive deeper into the theory behind model implementations, results, and analysis.
+* See our paper: `LLM_SU24_Final_Project_GPT2_Eval_Paper.pdf` to dive deeper into the theory behind model implementations, results, and analysis.
 * GPU compute is necessary to train significant models in a reasonable amount of time. We recommend [Lightning AI](https://lightning.ai/) for cloud based development and GPUs.
 * [Karpathy GPT2 YouTube Tutorial](https://www.youtube.com/watch?v=l8pRSuU81PU)
 * [Original Transformers Paper](https://arxiv.org/abs/1706.03762)
